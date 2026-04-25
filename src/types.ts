@@ -2,47 +2,55 @@ export type LogEntry = {
 }
 export type Term = BigInteger
 export type Index = BigInteger
+export type ServerUuid = string;
+
+export type PersistentState = {
+  currentTerm: Term;
+  logs: LogEntry[];
+  votedFor: ServerUuid;
+}
+
+export type VolatileState = {
+  commitIndex: Index;
+  lastAppliedIndex: Index;
+}
+
+export type ServerState = VolatileState & PersistentState
 
 export type LeaderState = {
-  currentTerm: Term;
-
-  entries: LogEntry[];
-  currentIndex: Index;
-
-  committedIndex: Index;
-  lastAppliedIndex: Index;
-
   followers: {
-    serverUid: string; //How to identify? Should we <T> ?
+    serverUid: ServerUuid; //How to identify? Should we <T> ?
     nextIndex: Index;
-    nextMatchIndex: Index;
+    matchIndex: Index;
   }[]
-}
-export type FollowerState = {
-  currentTerm: Term;
-  entries: LogEntry[]
-  currentIndex: Index;
-}
-export type CandidateState = {
-  currentTerm: Term;
-  entries: LogEntry[];
-  currentIndex: Index;
-}
+} & ServerState;
+
+export type FollowerState = ServerState;
+export type CandidateState = ServerState;
 
 
 /* RPC! */
 
-export type RequestVoteRPC = {
-  term: Term
-}
-export type RequestVoteRPCResponse = {
-  success: boolean
-}
 export type AppendEntriesRPC = {
   term: Term;
+  leaderId: ServerUuid;
+  prevLogIndex: Index;
+  prevLogTerm: Term;
+  logs: LogEntry[];
 }
 export type AppendEntriesRPCResponse = {
   success: boolean
+  term: Term;
+}
+export type RequestVoteRPC = {
+  term: Term
+  candidateId: ServerUuid;
+  lastLogIndex: Index;
+  lastLogTerm: Term;
+}
+export type RequestVoteRPCResponse = {
+  success: boolean
+  voteGranted: boolean;
 }
 
 export interface RaftStateMachineLeader {

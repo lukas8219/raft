@@ -1,16 +1,17 @@
 export type LogEntry = {
 }
-export type Term = BigInteger
-export type Index = BigInteger
+export type Term = Number;
+export type Index = Number;
 export type ServerUuid = string;
 
 export type PersistentState = {
   currentTerm: Term;
   logs: LogEntry[];
-  votedFor: ServerUuid;
+  votedFor?: ServerUuid;
 }
 
 export type VolatileState = {
+  serverUuid: string;
   commitIndex: Index;
   lastAppliedIndex: Index;
 }
@@ -71,4 +72,4 @@ export interface RaftStateMachineServer {
   handleRequestVote(request: RequestVoteRPC): Promise<RequestVoteRPCResponse>
 }
 
-export interface RaftStateMachine extends RaftStateMachineLeader, RaftStateMachineCandidate, RaftStateMachineFollower { }
+export interface RaftStateMachine extends RaftStateMachineLeader, RaftStateMachineCandidate, RaftStateMachineFollower, RaftStateMachineServer { }

@@ -1,5 +1,4 @@
 import type { AppendEntriesRPC, AppendEntriesRPCResponse, CandidateState, FollowerState, LeaderState, RaftStateMachine, RaftStateMachineCandidate, RaftStateMachineFollower, RaftStateMachineLeader, RequestVoteRPC, RequestVoteRPCResponse, ServerState, ServerUuid, Term } from './types.ts';
-import { RaftBaseClass } from './base-class.js';
 const INITIAL_STATE: Omit<ServerState, 'serverUuid' | 'votedFor'> = {
   lastAppliedIndex: 0,
   commitIndex: 0,

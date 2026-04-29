@@ -1,8 +1,11 @@
-export type LogEntry = {
-}
 export type Term = Number;
-export type Index = Number;
+export type Index = number;
 export type ServerUuid = string;
+
+export type LogEntry = {
+  term: Term;
+  command: string; // Can we generically type this?
+}
 
 export type PersistentState = {
   currentTerm: Term;
@@ -38,6 +41,7 @@ export type AppendEntriesRPC = {
   prevLogIndex: Index;
   prevLogTerm: Term;
   logs: LogEntry[];
+  leaderCommit: Index;
 }
 export type AppendEntriesRPCResponse = {
   success: boolean

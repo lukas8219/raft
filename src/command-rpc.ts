@@ -2,62 +2,45 @@ import { Duplex } from 'node:stream'
 import BinaryProtocol from 'binary-protocol'
 import { EventEmitter, once } from 'node:events';
 
-const SendCommandRPCProtocol = new BinaryProtocol();
-SendCommandRPCProtocol.define('Bytes', {
-  read: function(name: Buffer) {
+const AppendEntriesOpCode = 1;
+// export type AppendEntriesRPC = {
+//   term: Term;
+//   leaderId: ServerUuid;
+//   prevLogIndex: Index;
+//   prevLogTerm: Term;
+//   logs: LogEntry[];
+//   leaderCommit: Index;
+// }
+
+const RPCProtocol = new BinaryProtocol();
+RPCProtocol.define('AppendEntries', {
+  read: function(data: Record<string, unknown>) {
     this
-      .pushStack({ length: null, value: null })
-      .Int32BE('length')
-      .tap(function tapLength(data: any) { // i dont know
-        if (data.length === -1) {
-          data.value = null;
-          return
+      .Int32BE('status')
+      .tap(function(data: Record<string, unknown>) {
+        if (data.status === 0) {
+          //@ts-ignore
+          return this.String('error');
         }
-        // @ts-ignore
-        this.raw('value', data.length)
-      })
-      .popStack(name, function popStackBytes(data: any) {
-        return data.value;
-      })
+        else {
+          //@ts-ignore
+          return this
+            .String('nickname')
+            .Int32BE('totalUnreadMessages');
+        }
+      });
   },
-  write: function writeByte(value: Buffer) {
-    if (value === null) {
-      this.Int32BE(-1);
-      return
-    }
-    this.Int32BE(value.length).raw(value)
+  write: function writeByte(data: Record<string, unknown>) {
+    this
+      .Int32BE(AppendEntriesOpCode) // op code
+      .String(data.term)
+      .String(data.leaderId)
+      .String(data.prevLogIndex)
+      .String(data.prevLogTerm)
+      .String(data.leaderCommit)
+      .String(data.logs)
   }
 })
-
-
-SendCommandRPCProtocol.define('String', {
-  read: function(name: string) {
-    this.Bytes(name)
-      .collect(function(data: any) {
-        if (data[name] != null) {
-          data[name] = data[name].toString('utf8')
-        }
-        return data;
-      })
-  },
-  write: function(value: string) {
-    this.Bytes(Buffer.from(value, 'utf8'))
-  }
-})
-
-function writeCommand(stream: Duplex, command: string, args: string) {
-  const writer = SendCommandRPCProtocol.createWriter();
-  writer.String(command);
-  writer.String(args);
-  stream.write(writer.buffer);
-}
-
-function createReader(stream: Duplex) {
-  const reader = SendCommandRPCProtocol.createReader(stream);
-  reader.String('command');
-  reader.String('args');
-  return reader;
-}
 
 type Server = {
   stream: Duplex;
@@ -65,17 +48,23 @@ type Server = {
 }
 
 export class RpcControlPlane {
-  private readonly servers: Map<string, Server> = new Map();
-  private readonly rpcEmitter: EventEmitter = new EventEmitter();
+  //@ts-ignore need the binary-protocol.d.ts
+  constructor(private readonly servers: Map<string, any>) { }
+
+  static async withConfiguration(servers: Map<string, Server>) {
+    const commanders = new Map<string, any>();
+    for (const [uuid, server] of servers) {
+      commanders.set(uuid, RPCProtocol.createCommander(server.stream));
+    }
+    const cp = new RpcControlPlane(commanders);
+    return cp;
+  }
 
   async sendCommand(serverId: string, command: string, args: string) {
     //register handler for event
-    const receiver = this.servers.get(serverId); //What is the failure mode here? Empty Duplex?
-    if (!receiver) throw new Error('server id does not exist in map')
-    const seqno = ++receiver.seqno;
-    const rpcPromise = once(this.rpcEmitter, `${serverId}:${seqno}`) //TODO: AbortSignal for timeouts
-    writeCommand(receiver.stream, command, args)
-    const response = await rpcPromise;
+    const target = this.servers.get(serverId); //What is the failure mode here? Empty Duplex?
+    if (!target) throw new Error('server id does not exist in map')
+    target.AppendEntries({})
     //wait for incoming
   }
 }

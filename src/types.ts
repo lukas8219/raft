@@ -1,48 +1,61 @@
+export type Term = Number;
+export type Index = number;
+export type ServerUuid = string;
+
 export type LogEntry = {
+  term: Term;
+  command: string; // Can we generically type this?
 }
-export type Term = BigInteger
-export type Index = BigInteger
+
+export type PersistentState = {
+  currentTerm: Term;
+  logs: LogEntry[];
+  votedFor?: ServerUuid;
+}
+
+export type VolatileState = {
+  serverUuid: string;
+  commitIndex: Index;
+  lastAppliedIndex: Index;
+}
+
+export type ServerState = VolatileState & PersistentState
 
 export type LeaderState = {
-  currentTerm: Term;
-
-  entries: LogEntry[];
-  currentIndex: Index;
-
-  committedIndex: Index;
-  lastAppliedIndex: Index;
-
   followers: {
-    serverUid: string; //How to identify? Should we <T> ?
+    serverUid: ServerUuid; //How to identify? Should we <T> ?
     nextIndex: Index;
-    nextMatchIndex: Index;
+    matchIndex: Index;
   }[]
-}
-export type FollowerState = {
-  currentTerm: Term;
-  entries: LogEntry[]
-  currentIndex: Index;
-}
-export type CandidateState = {
-  currentTerm: Term;
-  entries: LogEntry[];
-  currentIndex: Index;
-}
+} & ServerState;
+
+export type FollowerState = ServerState;
+export type CandidateState = ServerState;
 
 
 /* RPC! */
 
-export type RequestVoteRPC = {
-  term: Term
-}
-export type RequestVoteRPCResponse = {
-  success: boolean
-}
 export type AppendEntriesRPC = {
   term: Term;
+  leaderId: ServerUuid;
+  prevLogIndex: Index;
+  prevLogTerm: Term;
+  logs: LogEntry[];
+  leaderCommit: Index;
 }
 export type AppendEntriesRPCResponse = {
   success: boolean
+  term: Term;
+}
+export type RequestVoteRPC = {
+  term: Term
+  candidateId: ServerUuid;
+  lastLogIndex: Index;
+  lastLogTerm: Term;
+}
+export type RequestVoteRPCResponse = {
+  success: boolean
+  voteGranted: boolean;
 }
 
 export interface RaftStateMachineLeader {
@@ -63,4 +76,4 @@ export interface RaftStateMachineServer {
   handleRequestVote(request: RequestVoteRPC): Promise<RequestVoteRPCResponse>
 }
 
-export interface RaftStateMachine extends RaftStateMachineLeader, RaftStateMachineCandidate, RaftStateMachineFollower { }
+export interface RaftStateMachine extends RaftStateMachineLeader, RaftStateMachineCandidate, RaftStateMachineFollower, RaftStateMachineServer { }
